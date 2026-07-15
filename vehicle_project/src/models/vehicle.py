@@ -9,9 +9,14 @@ Author : Meeth Amin
 =========================================================
 """
 
+import time
+import hashlib
+
 from crypto import qrng
 from crypto import kyber
 from crypto import dilithium
+
+from datetime import datetime
 
 from common.models import VehicleContext
 from common.protocol_types import (
@@ -25,7 +30,6 @@ from threat_evaluation import ThreatEvaluation
 from privacy_policy import PrivacyPolicy
 from multilevel_pseudonym import MultiLevelPseudonymGenerator
 from pseudonym_manager import PseudonymManager
-
 
 class Vehicle:
 
