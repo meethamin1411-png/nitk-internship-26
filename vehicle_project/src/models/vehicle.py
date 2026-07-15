@@ -9,12 +9,22 @@ Author : Meeth Amin
 =========================================================
 """
 
-import time
-import hashlib
-
 from crypto import qrng
 from crypto import kyber
 from crypto import dilithium
+
+from common.models import VehicleContext
+from common.protocol_types import (
+    RoadType,
+    PrivacyMode,
+    RotationReason,
+)
+
+from context_manager import ContextManager
+from threat_evaluation import ThreatEvaluation
+from privacy_policy import PrivacyPolicy
+from multilevel_pseudonym import MultiLevelPseudonymGenerator
+from pseudonym_manager import PseudonymManager
 
 
 class Vehicle:
@@ -94,6 +104,21 @@ class Vehicle:
 
         self.pseudonym_history = []
         self.pseudonym_count = 0
+    # ==================================================
+# Adaptive Privacy System
+# ==================================================
+
+        self.context_manager = None
+
+        self.threat_engine = ThreatEvaluation()
+
+        self.current_threat = None
+
+        self.current_privacy_mode = PrivacyMode.NORMAL
+
+        self.pseudonym_generator = MultiLevelPseudonymGenerator()
+
+        self.pseudonym_manager = PseudonymManager()
 
         # ==================================================
         # Session Keys
@@ -365,6 +390,167 @@ class Vehicle:
 
         return pseudonym
 
+    # =====================================================
+    # Initialize Adaptive Context
+    # =====================================================
+
+    def initialize_context(
+        self,
+        road_id,
+        road_type,
+        traffic_density,
+        vehicle_speed,
+        security_alert,
+        rsu_trust_score,
+        emergency_mode=False
+    ):
+        """
+        Initialize adaptive vehicle context.
+        """
+
+        context = VehicleContext(
+
+            vehicle_id=self.real_id,
+
+            road_id=road_id,
+
+            road_type=road_type,
+
+            traffic_density=traffic_density,
+
+            vehicle_speed=vehicle_speed,
+
+            security_alert=security_alert,
+
+            rsu_trust_score=rsu_trust_score,
+
+            emergency_mode=emergency_mode,
+
+            privacy_mode=self.current_privacy_mode,
+
+            timestamp=datetime.now()
+
+        )
+
+        self.context_manager = ContextManager(context)
+
+        return context
+
+    # =====================================================
+    # Update Adaptive Pseudonym
+    # =====================================================
+
+    def update_adaptive_pseudonym(self):
+        """
+        Generate a context-aware adaptive pseudonym.
+        """
+
+        if self.context_manager is None:
+
+            raise ValueError(
+                "Vehicle context has not been initialized."
+            )
+
+        # ---------------------------------------------
+        # Current Context
+        # ---------------------------------------------
+
+        context = self.context_manager.get_context()
+
+        # ---------------------------------------------
+        # Threat Evaluation
+        # ---------------------------------------------
+
+        self.current_threat = self.threat_engine.evaluate(
+            context
+        )
+
+        # ---------------------------------------------
+        # Privacy Policy
+        # ---------------------------------------------
+
+        self.current_privacy_mode = (
+            PrivacyPolicy.select_privacy_mode(
+                self.current_threat.level
+            )
+        )
+
+        # ---------------------------------------------
+        # Update Context
+        # ---------------------------------------------
+
+        self.context_manager.update_context(
+
+            privacy_mode=self.current_privacy_mode
+
+        )
+
+        # ---------------------------------------------
+        # Generate Adaptive Pseudonym
+        # ---------------------------------------------
+
+        pseudonym = self.pseudonym_generator.generate_pseudonym(
+
+            vehicle_id=self.real_id,
+
+            road_id=context.road_id,
+
+            threat_level=self.current_threat.level.value,
+
+            privacy_mode=self.current_privacy_mode
+
+        )
+
+        # ---------------------------------------------
+        # Store using Pseudonym Manager
+        # ---------------------------------------------
+
+        self.pseudonym_manager.store_pseudonym(
+
+            pid=pseudonym.pid,
+
+            privacy_mode=self.current_privacy_mode,
+
+            rotation_reason=RotationReason.CONTEXT_CHANGE
+
+        )
+
+        # ---------------------------------------------
+        # Update Vehicle Identity
+        # ---------------------------------------------
+
+        self.previous_pseudonym = self.current_pseudonym
+
+        self.current_pseudonym = pseudonym.pid
+
+        self.pseudonym_history.append(
+
+            {
+
+                "pid": pseudonym.pid,
+
+                "privacy_mode": self.current_privacy_mode.value,
+
+                "threat": self.current_threat.level.value,
+
+                "timestamp": context.timestamp
+
+            }
+
+        )
+
+        print()
+
+        print("✓ Adaptive Pseudonym Updated")
+
+        print(f"Threat Level : {self.current_threat.level.value}")
+
+        print(f"Privacy Mode : {self.current_privacy_mode.value}")
+
+        print(f"Current PID  : {self.current_pseudonym}")
+
+        return pseudonym
+
 
     # =====================================================
     # Get Current Pseudonym
@@ -518,7 +704,7 @@ class Vehicle:
 
         print("=" * 70)
 
-    # =====================================================
+       # =====================================================
     # String Representation
     # =====================================================
 
@@ -530,3 +716,5 @@ class Vehicle:
             f"Pseudonym={self.current_pseudonym}, "
             f"Status={self.status})"
         )
+
+
