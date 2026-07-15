@@ -13,13 +13,7 @@ using
 • ML-DSA (Dilithium)
 • ML-KEM (Kyber)
 • QRNG Nonces
-
-This protocol is the foundation for
-
-• Secure Messaging
-• V2V Communication
-• V2I Communication
-• City Simulation
+• Authentication Confidence Token (ACT)
 
 Author : Meeth Amin
 =========================================================
@@ -30,6 +24,7 @@ import time
 from crypto import qrng
 from crypto import dilithium
 from crypto import kyber
+from crypto import hash_utils
 
 from models import Vehicle
 from models import RSU
@@ -37,7 +32,6 @@ from models import TrustedAuthority
 
 
 class MutualAuthentication:
-
     """
     PQC Mutual Authentication Manager
     """
@@ -94,7 +88,8 @@ class MutualAuthentication:
         print(
             "\nMutual Authentication Protocol Initialized"
         )
-            # =====================================================
+
+    # =====================================================
     # Create Authentication Request (Message M1)
     # =====================================================
 
@@ -104,47 +99,91 @@ class MutualAuthentication:
         receiver
     ):
         """
-        Create the first authentication message.
-
-        Works for:
-            Vehicle -> Vehicle
-            Vehicle -> RSU
+        Create the first authentication request.
         """
 
         print("\nCreating Authentication Request...")
 
-        # ---------------------------------------------
+        print("Generating Authentication Confidence Token...")
+
+        # -------------------------------------------------
         # Timestamp
-        # ---------------------------------------------
+        # -------------------------------------------------
 
         timestamp = int(time.time())
 
-        # ---------------------------------------------
+        # -------------------------------------------------
         # QRNG Nonce
-        # ---------------------------------------------
+        # -------------------------------------------------
 
         nonce = qrng.generate_random_bytes(16)
 
-        # ---------------------------------------------
-        # Message to be Signed
-        # ---------------------------------------------
+        # -------------------------------------------------
+        # Authentication Confidence Token Parameters
+        # -------------------------------------------------
+
+        road_segment = "RS-001"
+
+        vehicle_state = "ACTIVE"
+
+        # -------------------------------------------------
+        # Generate ACT
+        # -------------------------------------------------
+
+        act = hash_utils.generate_act(
+
+            sender.current_pseudonym,
+
+            nonce,
+
+            road_segment,
+
+            vehicle_state,
+
+            timestamp
+
+        )
+        print("ACT Generated")
+
+        # -------------------------------------------------
+        # Receiver Identity
+        # -------------------------------------------------
+
+        receiver_identity = (
+
+            receiver.rsu_id
+
+            if isinstance(receiver, RSU)
+
+            else receiver.current_pseudonym
+
+        )
+
+        # -------------------------------------------------
+        # Build Signed Message
+        # -------------------------------------------------
 
         message = (
 
             str(sender.current_pseudonym)
 
-            + str(receiver.rsu_id if isinstance(receiver, RSU)
-                  else receiver.current_pseudonym)
+            + str(receiver_identity)
 
             + str(timestamp)
 
             + nonce.hex()
 
+            + road_segment
+
+            + vehicle_state
+
+            + act
+
         ).encode()
 
-        # ---------------------------------------------
-        # Dilithium Signature
-        # ---------------------------------------------
+        # -------------------------------------------------
+        # Generate Dilithium Signature
+        # -------------------------------------------------
 
         signature = dilithium.sign_message(
 
@@ -154,46 +193,55 @@ class MutualAuthentication:
 
         )
 
-        # ---------------------------------------------
-        # Authentication Request
-        # ---------------------------------------------
+        # -------------------------------------------------
+        # Authentication Request (M1)
+        # -------------------------------------------------
 
         request = {
 
-            "sender_id":
+    "sender_id":
+        sender.real_id,
 
-                sender.real_id,
+    "sender_pseudonym":
+        sender.current_pseudonym,
 
-            "sender_pseudonym":
+    "receiver":
+        receiver_identity,
 
-                sender.current_pseudonym,
+    "timestamp":
+        timestamp,
 
-            "receiver":
+    "nonce":
+        nonce,
 
-                receiver.rsu_id
+    # -----------------------------------
+    # Authentication Confidence Token
+    # -----------------------------------
 
-                if isinstance(receiver, RSU)
+    "road_segment":
+        road_segment,
 
-                else receiver.real_id,
+    "vehicle_state":
+        vehicle_state,
 
-            "timestamp":
+    "act":
+        act,
 
-                timestamp,
+    # -----------------------------------
+    # PQC Signature
+    # -----------------------------------
 
-            "nonce":
+    "signature":
+        signature,
 
-                nonce,
+    # -----------------------------------
+    # ML-KEM Public Key
+    # -----------------------------------
 
-            "signature":
+    "kem_public_key":
+        sender.kem_pk
 
-                signature,
-
-            "kem_public_key":
-
-                sender.kem_pk
-
-        }
-
+}
         return request
             # =====================================================
     # Verify Authentication Request (Message M1)
@@ -209,6 +257,8 @@ class MutualAuthentication:
         """
 
         print("\nVerifying Authentication Request...")
+
+        print(">>> ACT VERIFICATION FUNCTION EXECUTING <<<")
 
         # -------------------------------------------------
         # Timestamp Validation
@@ -241,7 +291,7 @@ class MutualAuthentication:
         self.used_nonces.add(nonce_hex)
 
         # -------------------------------------------------
-        # Lookup Vehicle using Pseudonym
+        # Lookup Sender using Pseudonym
         # -------------------------------------------------
 
         sender = self.ta.get_vehicle_by_pseudonym(
@@ -270,8 +320,90 @@ class MutualAuthentication:
 
             return False
 
+
         # -------------------------------------------------
-        # Reconstruct Signed Message
+        # Authentication Confidence Token Verification
+        # -------------------------------------------------
+
+        print("Verifying Authentication Confidence Token...")
+
+        if not hash_utils.verify_act(
+
+            request["act"],
+
+            request["sender_pseudonym"],
+
+            request["nonce"],
+
+            request["road_segment"],
+
+            request["vehicle_state"],
+
+            request["timestamp"]
+
+        ):
+
+            print("Authentication Failed : Invalid ACT")
+
+            self.failed_authentications += 1
+
+            return False
+
+        print("ACT Verified")
+                # =====================================================
+        # Context Check
+        # =====================================================
+
+        print("Performing Context Check...")
+
+        # ---------------------------------------------
+        # Check Vehicle State
+        # ---------------------------------------------
+
+        allowed_states = [
+
+            "ACTIVE",
+
+            "EMERGENCY"
+
+        ]
+
+        if request["vehicle_state"] not in allowed_states:
+
+            print("Authentication Failed : Invalid Vehicle State")
+
+            self.failed_authentications += 1
+
+            return False
+
+        # ---------------------------------------------
+        # Check Road Segment
+        # ---------------------------------------------
+
+        allowed_segments = [
+
+            "RS-001",
+
+            "NH66",
+
+            "CITY_ZONE",
+
+            "MILITARY_ZONE"
+
+        ]
+
+        if request["road_segment"] not in allowed_segments:
+
+            print("Authentication Failed : Invalid Road Segment")
+
+            self.failed_authentications += 1
+
+            return False
+
+        print("Context Check Passed")
+
+        # -------------------------------------------------
+        # Receiver Identity
         # -------------------------------------------------
 
         receiver_identity = (
@@ -284,6 +416,10 @@ class MutualAuthentication:
 
         )
 
+        # -------------------------------------------------
+        # Rebuild Signed Message
+        # -------------------------------------------------
+
         message = (
 
             str(request["sender_pseudonym"])
@@ -294,7 +430,18 @@ class MutualAuthentication:
 
             + nonce_hex
 
+            + request["road_segment"]
+
+            + request["vehicle_state"]
+
+            + request["act"]
+
         ).encode()
+                # =====================================================
+        # ML-DSA Verification
+        # =====================================================
+
+        print("Performing ML-DSA Signature Verification...")
 
         # -------------------------------------------------
         # Dilithium Signature Verification
@@ -315,13 +462,17 @@ class MutualAuthentication:
             self.failed_authentications += 1
 
             return False
+                # =====================================================
+        # ML-DSA Verification
+        # =====================================================
+
+        print("Performing ML-DSA Signature Verification...")
 
         print("Authentication Request Verified")
 
         return True
-
-
-    # =====================================================
+                
+            # =====================================================
     # Create Authentication Response (Message M2)
     # =====================================================
 
@@ -331,19 +482,44 @@ class MutualAuthentication:
         initiator
     ):
         """
-        Create authentication response.
+        Create authentication response (Message M2).
         """
 
         print("\nCreating Authentication Response...")
 
+        # -------------------------------------------------
+        # Timestamp
+        # -------------------------------------------------
+
         timestamp = int(time.time())
+
+        # -------------------------------------------------
+        # Generate QRNG Nonce
+        # -------------------------------------------------
 
         nonce = qrng.generate_random_bytes(16)
 
+        # -------------------------------------------------
+        # Responder Identity
+        # -------------------------------------------------
+
+        responder_identity = (
+
+            responder.current_pseudonym
+
+            if isinstance(responder, Vehicle)
+
+            else responder.rsu_id
+
+        )
+
+        # -------------------------------------------------
+        # Build Signed Message
+        # -------------------------------------------------
+
         message = (
 
-            str(responder.current_pseudonym if isinstance(responder, Vehicle)
-                else responder.rsu_id)
+            str(responder_identity)
 
             + str(initiator.current_pseudonym)
 
@@ -353,6 +529,10 @@ class MutualAuthentication:
 
         ).encode()
 
+        # -------------------------------------------------
+        # Generate Dilithium Signature
+        # -------------------------------------------------
+
         signature = dilithium.sign_message(
 
             responder.sig_sk,
@@ -360,6 +540,10 @@ class MutualAuthentication:
             message
 
         )
+
+        # -------------------------------------------------
+        # Authentication Response
+        # -------------------------------------------------
 
         response = {
 
@@ -373,11 +557,7 @@ class MutualAuthentication:
 
             "responder_pseudonym":
 
-                responder.current_pseudonym
-
-                if isinstance(responder, Vehicle)
-
-                else responder.rsu_id,
+                responder_identity,
 
             "timestamp":
 
@@ -398,7 +578,9 @@ class MutualAuthentication:
         }
 
         return response
-            # =====================================================
+
+
+    # =====================================================
     # Verify Authentication Response (Message M2)
     # =====================================================
 
@@ -409,7 +591,7 @@ class MutualAuthentication:
         response
     ):
         """
-        Verify the authentication response.
+        Verify authentication response.
         """
 
         print("\nVerifying Authentication Response...")
@@ -436,16 +618,20 @@ class MutualAuthentication:
 
         if nonce_hex in self.used_nonces:
 
-            print("Authentication Failed : Replay Detected")
+            print("Authentication Failed : Replay Attack")
 
             self.failed_authentications += 1
 
             return False
 
-        self.used_nonces.add(nonce_hex)
+        self.used_nonces.add(
+
+            nonce_hex
+
+        )
 
         # -------------------------------------------------
-        # Build Signed Message
+        # Responder Identity
         # -------------------------------------------------
 
         responder_identity = (
@@ -457,6 +643,10 @@ class MutualAuthentication:
             else responder.rsu_id
 
         )
+
+        # -------------------------------------------------
+        # Build Signed Message
+        # -------------------------------------------------
 
         message = (
 
@@ -471,7 +661,7 @@ class MutualAuthentication:
         ).encode()
 
         # -------------------------------------------------
-        # Signature Verification
+        # Verify Dilithium Signature
         # -------------------------------------------------
 
         if not dilithium.verify_signature(
@@ -493,9 +683,7 @@ class MutualAuthentication:
         print("Authentication Response Verified")
 
         return True
-
-
-    # =====================================================
+            # =====================================================
     # Establish PQC Session Key (Message M3)
     # =====================================================
 
@@ -511,61 +699,48 @@ class MutualAuthentication:
 
         print("\nEstablishing Session Key...")
 
-        # -----------------------------
+        # -------------------------------------------------
         # ML-KEM Encapsulation
-        # -----------------------------
+        # -------------------------------------------------
 
-        ciphertext, shared_secret_sender = (
-
-            kyber.encapsulate(
-
-                responder_public_key
-
-            )
-
+        ciphertext, shared_secret_sender = kyber.encapsulate(
+            responder_public_key
         )
 
-        # -----------------------------
+        # -------------------------------------------------
         # ML-KEM Decapsulation
-        # -----------------------------
+        # -------------------------------------------------
 
-        shared_secret_receiver = (
-
-            kyber.decapsulate(
-
-                responder.kem_sk,
-
-                ciphertext
-
-            )
-
+        shared_secret_receiver = kyber.decapsulate(
+            responder.kem_sk,
+            ciphertext
         )
 
-        # -----------------------------
+        # -------------------------------------------------
         # Session Context
-        # -----------------------------
+        # -------------------------------------------------
+
+        responder_identity = (
+
+            responder.current_pseudonym
+
+            if isinstance(responder, Vehicle)
+
+            else responder.rsu_id
+
+        )
 
         context = (
 
             initiator.current_pseudonym
 
-            +
-
-            (
-
-                responder.current_pseudonym
-
-                if isinstance(responder, Vehicle)
-
-                else responder.rsu_id
-
-            )
+            + responder_identity
 
         )
 
-        # -----------------------------
+        # -------------------------------------------------
         # Derive Session Keys
-        # -----------------------------
+        # -------------------------------------------------
 
         sender_key = kyber.derive_session_key(
 
@@ -583,19 +758,27 @@ class MutualAuthentication:
 
         )
 
+        # -------------------------------------------------
+        # Verify Session Key
+        # -------------------------------------------------
+
         if sender_key != receiver_key:
 
             print("Session Key Establishment Failed")
 
+            self.failed_authentications += 1
+
             return False
 
-        # -----------------------------
-        # Store Active Session
-        # -----------------------------
+        # -------------------------------------------------
+        # Store Session
+        # -------------------------------------------------
 
         session = {
 
             "session_key": sender_key,
+
+            "ciphertext": ciphertext,
 
             "created_at": time.time(),
 
@@ -622,7 +805,9 @@ class MutualAuthentication:
         print("Session Key Established")
 
         return True
-            # =====================================================
+
+
+    # =====================================================
     # Complete Mutual Authentication
     # =====================================================
 
@@ -631,6 +816,9 @@ class MutualAuthentication:
         sender,
         receiver
     ):
+        """
+        Execute complete PQC Mutual Authentication.
+        """
 
         print("\n" + "=" * 70)
         print("PQC MUTUAL AUTHENTICATION")
@@ -650,9 +838,9 @@ class MutualAuthentication:
 
         start = time.perf_counter()
 
-        # -------------------------------------------------
+        # =================================================
         # Message M1
-        # -------------------------------------------------
+        # =================================================
 
         request = self.create_auth_request(
 
@@ -670,11 +858,13 @@ class MutualAuthentication:
 
         ):
 
+            print("Authentication Failed during Message M1")
+
             return False
 
-        # -------------------------------------------------
+        # =================================================
         # Message M2
-        # -------------------------------------------------
+        # =================================================
 
         response = self.create_auth_response(
 
@@ -694,11 +884,17 @@ class MutualAuthentication:
 
         ):
 
-            return False
+            print("Authentication Failed during Message M2")
 
-        # -------------------------------------------------
+            return False
+                # =====================================================
+        # ML-KEM
+        # =====================================================
+
+        print("Starting ML-KEM Key Encapsulation...")
+        # =================================================
         # Message M3
-        # -------------------------------------------------
+        # =================================================
 
         if not self.establish_session_key(
 
@@ -710,11 +906,20 @@ class MutualAuthentication:
 
         ):
 
-            return False
+            print("Authentication Failed during Session Establishment")
 
+            return False
+        print("ML-KEM Completed")
+        # =====================================================
+# Session Key
+# =====================================================
+
+        print("Secure Session Key Established")
         elapsed = (
 
-            time.perf_counter() - start
+            time.perf_counter()
+
+            - start
 
         ) * 1000
 
@@ -725,6 +930,10 @@ class MutualAuthentication:
         )
 
         self.successful_authentications += 1
+
+        # =================================================
+        # Authentication Log
+        # =================================================
 
         self.authentication_logs.append({
 
@@ -740,13 +949,21 @@ class MutualAuthentication:
 
                 else receiver.real_id,
 
-            "time":
+            "sender_pid":
 
-                elapsed,
+                sender.current_pseudonym,
+
+            "authentication_confidence_token":
+
+                request["act"],
 
             "timestamp":
 
-                int(time.time())
+                request["timestamp"],
+
+            "authentication_time":
+
+                elapsed
 
         })
 
@@ -757,73 +974,147 @@ class MutualAuthentication:
         print("=" * 70)
 
         return True
+        # =====================================================
+# Network Authentication
+# =====================================================
 
-
-       # =====================================================
-    # Authenticate Network
-    # =====================================================
-
+    
     def authenticate_network(
         self,
         vehicles,
-        rsus=None
+        rsus
     ):
         """
-        Authenticate neighbouring vehicles and RSUs.
+        Perform authentication across the network.
         """
 
-        print("\n" + "=" * 70)
+        print("\n")
+        print("=" * 70)
         print("NETWORK AUTHENTICATION")
         print("=" * 70)
 
-        # ---------------------------------------------
-        # Vehicle ↔ Vehicle
-        # ---------------------------------------------
+    # Vehicle ↔ Vehicle
 
-        for i in range(len(vehicles) - 1):
+        if len(vehicles) >= 2:
 
             self.authenticate(
 
-                vehicles[i],
+                vehicles[0],
 
-                vehicles[i + 1]
+                vehicles[1]
 
             )
 
-        # ---------------------------------------------
-        # Vehicle ↔ RSU
-        # ---------------------------------------------
+    # Vehicle ↔ RSU
 
-        if rsus is not None:
+        if len(vehicles) >= 1 and len(rsus) >= 1:
 
-            for index, vehicle in enumerate(vehicles):
+            self.authenticate(
 
-                rsu = rsus[index % len(rsus)]
+                vehicles[0],
 
-                self.authenticate(
+                rsus[0]
+ 
+            )
 
-                    vehicle,
+        if len(vehicles) >= 2 and len(rsus) >= 1:
 
-                    rsu
+            self.authenticate(
 
-                )
+                vehicles[1],
 
-      
-     # =====================================================
+                rsus[0]
+
+            )
+            # =====================================================
+        # Get Active Session
+    # =====================================================
+
+        # =====================================================
     # Get Active Session
     # =====================================================
+
     def get_session(
         self,
-        sender_id,
-        receiver_id
+        initiator_id,
+        responder_id
     ):
         """
         Return an active session if available.
         """
 
-        return self.active_sessions.get(
+        session = self.active_sessions.get(
+            (
+                initiator_id,
+                responder_id
+            )
+        )
 
-            (sender_id, receiver_id),
+        if session is None:
+            return None
+
+        if session["expires_at"] < time.time():
+
+            del self.active_sessions[
+                (
+                    initiator_id,
+                    responder_id
+                )
+            ]
+
+            return None
+
+        return session
+
+
+    # =====================================================
+    # Compatibility Wrapper
+    # =====================================================
+
+    def get_session_key(
+        self,
+        initiator_id,
+        responder_id
+    ):
+        """
+        Return only the session key for compatibility
+        with Secure Message Transfer.
+        """
+
+
+        session = self.get_session(
+            initiator_id,
+            responder_id
+        )
+
+        if session is None:
+            return None
+
+        return session["session_key"]
+
+
+    # =====================================================
+    # Remove Session
+    # =====================================================
+
+    def remove_session(
+        self,
+        initiator_id,
+        responder_id
+    ):
+        """
+        Remove an active session.
+        """
+
+        self.active_sessions.pop(
+
+            (
+
+                initiator_id,
+
+                responder_id
+
+            ),
 
             None
 
@@ -831,74 +1122,29 @@ class MutualAuthentication:
 
 
     # =====================================================
-    # Get Session Key
+    # Clear All Sessions
     # =====================================================
 
-    def get_session_key(
-        self,
-        sender_id,
-        receiver_id
-    ):
+    def clear_sessions(self):
         """
-        Return only the session key.
+        Remove every active session.
         """
 
-        session = self.get_session(
+        self.active_sessions.clear()
 
-            sender_id,
-
-            receiver_id
-
-        )
-
-        if session is None:
-
-            return None
-
-        return session["session_key"]
-
-
-   
-    # =====================================================
-    # Remove Expired Sessions
-    # =====================================================
-
-    def remove_expired_sessions(self):
-        """
-        Remove expired authentication sessions.
-        """
-
-        current_time = time.time()
-
-        expired = []
-
-        for session_id, session in self.active_sessions.items():
-
-            if session["expires_at"] <= current_time:
-
-                expired.append(session_id)
-
-        for session_id in expired:
-
-            del self.active_sessions[session_id]
-
-        if expired:
-
-            print(
-
-                f"{len(expired)} expired session(s) removed."
-
-            )
+        print("All Active Sessions Cleared")
 
 
     # =====================================================
-    # Display Authentication Statistics
+    # Show Authentication Statistics
     # =====================================================
 
     def show_statistics(self):
 
         print("\n" + "=" * 70)
+
         print("MUTUAL AUTHENTICATION STATISTICS")
+
         print("=" * 70)
 
         print(
@@ -925,51 +1171,6 @@ class MutualAuthentication:
 
         )
 
-        print(
-
-            f"Recorded Executions        : "
-
-            f"{len(self.authentication_times)}"
-
-        )
-
-        if self.authentication_times:
-
-            average = (
-
-                sum(self.authentication_times)
-
-                /
-
-                len(self.authentication_times)
-
-            )
-
-            print(
-
-                f"Average Authentication Time : "
-
-                f"{average:.3f} ms"
-
-            )
-
-        else:
-
-            print(
-
-                "Average Authentication Time : 0.000 ms"
-
-            )
-
-        print("=" * 70)
-
-
-    # =====================================================
-    # Export Statistics
-    # =====================================================
-
-    def get_statistics(self):
-
         if self.authentication_times:
 
             average = (
@@ -986,13 +1187,44 @@ class MutualAuthentication:
 
             average = 0.0
 
+        print(
+
+            f"Average Authentication Time : "
+
+            f"{average:.3f} ms"
+
+        )
+
+        print("=" * 70)
+
+
+    # =====================================================
+    # Export Statistics
+    # =====================================================
+
+    def get_statistics(self):
+
+        average = (
+
+            sum(self.authentication_times)
+
+            /
+
+            len(self.authentication_times)
+
+            if self.authentication_times
+
+            else 0.0
+
+        )
+
         return {
 
-            "successful":
+            "successful_authentications":
 
                 self.successful_authentications,
 
-            "failed":
+            "failed_authentications":
 
                 self.failed_authentications,
 
@@ -1000,13 +1232,17 @@ class MutualAuthentication:
 
                 len(self.active_sessions),
 
-            "average_time":
+            "average_authentication_time":
 
                 average,
 
             "authentication_times":
 
-                self.authentication_times.copy()
+                self.authentication_times.copy(),
+
+            "authentication_logs":
+
+                self.authentication_logs.copy()
 
         }
 
@@ -1017,9 +1253,9 @@ class MutualAuthentication:
 
     def reset_statistics(self):
 
-        self.authentication_logs.clear()
-
         self.authentication_times.clear()
+
+        self.authentication_logs.clear()
 
         self.active_sessions.clear()
 
@@ -1031,7 +1267,7 @@ class MutualAuthentication:
 
         self.failed_authentications = 0
 
-        print("Authentication Statistics Reset")
+        print("Mutual Authentication Statistics Reset")
 
 
     # =====================================================
@@ -1044,10 +1280,10 @@ class MutualAuthentication:
 
             f"MutualAuthentication("
 
-            f"Sessions={len(self.active_sessions)}, "
-
             f"Success={self.successful_authentications}, "
 
-            f"Failed={self.failed_authentications})"
+            f"Failed={self.failed_authentications}, "
+
+            f"Sessions={len(self.active_sessions)})"
 
         )
