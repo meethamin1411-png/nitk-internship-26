@@ -43,6 +43,15 @@ class MutualAuthentication:
     def __init__(
         self,
         trusted_authority: TrustedAuthority
+        self.act_generated = 0
+
+        self.act_verified = 0
+
+        self.act_rejected = 0
+
+        self.act_generation_times = []
+
+        self.act_verification_times = []
     ):
 
         self.ta = trusted_authority
@@ -104,7 +113,8 @@ class MutualAuthentication:
 
         print("\nCreating Authentication Request...")
 
-        print("Generating Authentication Confidence Token...")
+        print("\nGenerating Authentication Confidence Token")
+        print("-" * 50)
 
         # -------------------------------------------------
         # Timestamp
@@ -129,7 +139,7 @@ class MutualAuthentication:
         # -------------------------------------------------
         # Generate ACT
         # -------------------------------------------------
-
+        act_start = time.perf_counter()
         act = hash_utils.generate_act(
 
             sender.current_pseudonym,
@@ -143,6 +153,31 @@ class MutualAuthentication:
             timestamp
 
         )
+        act_time = (time.perf_counter() - act_start) * 1000
+
+        self.act_generated += 1
+
+        self.act_generation_times.append(act_time)
+        print()
+
+        print("Authentication Confidence Token Information")
+        print("-" * 50)
+
+        print(f"Vehicle PID        : {sender.current_pseudonym}")
+
+        print(f"Road Segment       : {road_segment}")
+
+        print(f"Vehicle State      : {vehicle_state}")
+
+        print(f"Timestamp          : {timestamp}")
+
+        print(f"Nonce              : {nonce.hex()[:16]}...")
+
+        print()
+
+        print(f"Generated ACT      : {act}")
+
+        print("-" * 50)
         print("ACT Generated")
 
         # -------------------------------------------------
@@ -256,9 +291,13 @@ class MutualAuthentication:
         Verify an incoming authentication request.
         """
 
-        print("\nVerifying Authentication Request...")
+        print("\n")
+        print("=" * 70)
+        print("STAGE 1 : LIGHTWEIGHT AUTHENTICATION")
+        print("=" * 70)
 
-        print(">>> ACT VERIFICATION FUNCTION EXECUTING <<<")
+        print("Receiving Authentication Request...")
+        print("Authentication Request Received")
 
         # -------------------------------------------------
         # Freshness Check
@@ -330,7 +369,7 @@ class MutualAuthentication:
         # -------------------------------------------------
 
         print("Verifying Authentication Confidence Token...")
-
+        verify_start = time.perf_counter()
         if not hash_utils.verify_act(
 
             request["act"],
@@ -352,8 +391,30 @@ class MutualAuthentication:
             self.failed_authentications += 1
 
             return False
+        verify_time = (time.perf_counter() - verify_start) * 1000
 
-        print("ACT Verified")
+        self.act_verified += 1
+
+        self.act_verification_times.append(verify_time)
+
+        print()
+
+        print("Authentication Confidence Token Verification")
+        print("-" * 50)
+
+        print("✓ Timestamp Validation Passed")
+
+        print("✓ Nonce Validation Passed")
+
+        print("✓ Road Segment Validation Passed")
+
+        print("✓ Vehicle State Validation Passed")
+
+        print("✓ Authentication Confidence Token Valid")
+
+        print()
+
+        print("ACT Verification Successful")
                 # =====================================================
         # Context Check
         # =====================================================
@@ -404,7 +465,18 @@ class MutualAuthentication:
 
             return False
 
-        print("Context Check Passed")
+        print()
+
+        print("Context Verification")
+        print("-" * 50)
+
+        print(f"Road Segment : {request['road_segment']}")
+
+        print(f"Vehicle State : {request['vehicle_state']}")
+
+        print()
+
+        print("✓ Context Validation Successful")
 
         # -------------------------------------------------
         # Receiver Identity
@@ -444,6 +516,20 @@ class MutualAuthentication:
                 # =====================================================
         # ML-DSA Verification
         # =====================================================
+        print()
+
+        print("=" * 70)
+
+        print("STAGE 1 AUTHENTICATION COMPLETED")
+
+        print("=" * 70)
+        print()
+
+        print("=" * 70)
+
+        print("STAGE 2 : POST-QUANTUM CRYPTOGRAPHIC AUTHENTICATION")
+
+        print("=" * 70)
 
         print("Performing ML-DSA Signature Verification...")
 
@@ -711,6 +797,7 @@ class MutualAuthentication:
         ciphertext, shared_secret_sender = kyber.encapsulate(
             responder_public_key
         )
+        print("✓ Shared Secret Generated")
 
         # -------------------------------------------------
         # ML-KEM Decapsulation
@@ -720,6 +807,7 @@ class MutualAuthentication:
             responder.kem_sk,
             ciphertext
         )
+        print("✓ Shared Secret Decapsulated")
 
         # -------------------------------------------------
         # Session Context
@@ -760,6 +848,7 @@ class MutualAuthentication:
             context
 
         )
+        print("✓ Context-Aware Session Key Derived")
 
         receiver_key = kyber.derive_session_key(
 
@@ -927,6 +1016,13 @@ class MutualAuthentication:
 # =====================================================
 
         print("Secure Session Key Established")
+        print()
+
+        print("=" * 70)
+
+        print("STAGE 2 AUTHENTICATION COMPLETED")
+
+        print("=" * 70)
         elapsed = (
 
             time.perf_counter()
@@ -1206,7 +1302,50 @@ class MutualAuthentication:
             f"{average:.3f} ms"
 
         )
+        print()
 
+print("=" * 70)
+print("ACT STATISTICS")
+print("=" * 70)
+
+print(f"Generated Tokens           : {self.act_generated}")
+print(f"Verified Tokens           : {self.act_verified}")
+print(f"Rejected Tokens           : {self.act_rejected}")
+
+if self.act_generation_times:
+
+    avg_generation = (
+        sum(self.act_generation_times)
+        / len(self.act_generation_times)
+    )
+
+    print(f"Average Generation Time   : {avg_generation:.3f} ms")
+
+        if self.act_verification_times:
+
+            avg_verification = (
+                sum(self.act_verification_times)
+                / len(self.act_verification_times)
+            )
+
+            print(f"Average Verification Time : {avg_verification:.3f} ms")
+            print()
+
+print("=" * 70)
+print("TWO-STAGE AUTHENTICATION SUMMARY")
+print("=" * 70)
+
+stage1_pass = self.act_verified
+stage1_fail = self.act_rejected
+
+stage2_pass = self.successful_authentications
+stage2_fail = self.failed_authentications - self.act_rejected
+
+print(f"Stage 1 Successful : {stage1_pass}")
+print(f"Stage 1 Failed     : {stage1_fail}")
+
+print(f"Stage 2 Successful : {stage2_pass}")
+print(f"Stage 2 Failed     : {max(stage2_fail,0)}")
         print("=" * 70)
 
 
@@ -1299,3 +1438,47 @@ class MutualAuthentication:
             f"Sessions={len(self.active_sessions)})"
 
         )
+# =====================================================
+# ACT Failure Demonstration
+# =====================================================
+
+    def demo_invalid_act(
+        self,
+        sender,
+        receiver
+    ):
+        """
+        Demonstrates that an invalid Authentication Confidence
+        Token (ACT) is rejected during Stage 1 before any
+        expensive cryptographic operations are executed.
+        """
+
+        print("\n" + "=" * 70)
+        print("ACT FAILURE DEMONSTRATION")
+        print("=" * 70)
+
+        # Create a normal authentication request
+        request = self.create_auth_request(
+            sender,
+            receiver
+        )
+
+        # Tamper with the ACT
+        request["act"] = "INVALID_ACT"
+
+        print("\nACT has been intentionally modified.")
+
+        # Verify the modified request
+        result = self.verify_auth_request(
+            receiver,
+            request
+        )
+
+        if not result:
+
+            print("\nAuthentication Rejected at Stage 1")
+            print("ML-DSA Verification Skipped")
+            print("ML-KEM Key Establishment Skipped")
+            print("Session Key Generation Skipped")
+
+        print("=" * 70)
