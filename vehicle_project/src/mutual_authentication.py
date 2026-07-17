@@ -29,6 +29,7 @@ from crypto import hash_utils
 from models import Vehicle
 from models import RSU
 from models import TrustedAuthority
+from context_aware_session_key import ContextAwareSessionKey
 
 
 class MutualAuthentication:
@@ -88,6 +89,7 @@ class MutualAuthentication:
         print(
             "\nMutual Authentication Protocol Initialized"
         )
+        self.context_key_manager = ContextAwareSessionKey()
 
     # =====================================================
     # Create Authentication Request (Message M1)
@@ -742,22 +744,45 @@ class MutualAuthentication:
         # Derive Session Keys
         # -------------------------------------------------
 
-        sender_key = kyber.derive_session_key(
+                # -------------------------------------------------
+        # Context-Aware Session Key Derivation
+        # -------------------------------------------------
 
-            shared_secret_sender,
+        session_nonce = qrng.generate_random_bytes(16).hex()
 
-            context
+        road_id = "RS-001"
 
+        pseudonym = initiator.current_pseudonym
+
+        timestamp = str(int(time.time()))
+
+        sender_key = self.context_key_manager.derive_session_key(
+            shared_secret=shared_secret_sender,
+            session_nonce=session_nonce,
+            road_id=road_id,
+            pseudonym=pseudonym,
+            timestamp=timestamp
         )
 
-        receiver_key = kyber.derive_session_key(
-
-            shared_secret_receiver,
-
-            context
-
+        receiver_key = self.context_key_manager.derive_session_key(
+            shared_secret=shared_secret_receiver,
+            session_nonce=session_nonce,
+            road_id=road_id,
+            pseudonym=pseudonym,
+            timestamp=timestamp
         )
 
+        # -------------------------------------------------
+        # Verify Session Key
+        # -------------------------------------------------
+
+        if sender_key != receiver_key:
+
+            print("Session Key Establishment Failed")
+
+            self.failed_authentications += 1
+
+            return False
         # -------------------------------------------------
         # Verify Session Key
         # -------------------------------------------------
