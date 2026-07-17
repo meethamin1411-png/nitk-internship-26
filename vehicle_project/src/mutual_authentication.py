@@ -261,8 +261,10 @@ class MutualAuthentication:
         print(">>> ACT VERIFICATION FUNCTION EXECUTING <<<")
 
         # -------------------------------------------------
-        # Timestamp Validation
+        # Freshness Check
         # -------------------------------------------------
+
+        print("Checking Freshness...")
 
         current_time = int(time.time())
 
@@ -273,6 +275,8 @@ class MutualAuthentication:
             self.failed_authentications += 1
 
             return False
+
+        print("Freshness Check Passed")
 
         # -------------------------------------------------
         # Replay Protection
@@ -466,7 +470,7 @@ class MutualAuthentication:
         # ML-DSA Verification
         # =====================================================
 
-        print("Performing ML-DSA Signature Verification...")
+        print("ML-DSA Signature Verified")
 
         print("Authentication Request Verified")
 
@@ -691,7 +695,8 @@ class MutualAuthentication:
         self,
         initiator,
         responder,
-        responder_public_key
+        responder_public_key,
+        request
     ):
         """
         Establish ML-KEM session key.
@@ -732,11 +737,17 @@ class MutualAuthentication:
 
         context = (
 
-            initiator.current_pseudonym
+    initiator.current_pseudonym
 
-            + responder_identity
+    + responder_identity
 
-        )
+    + request["road_segment"]
+
+    + request["vehicle_state"]
+
+)
+
+
 
         # -------------------------------------------------
         # Derive Session Keys
@@ -902,7 +913,8 @@ class MutualAuthentication:
 
             receiver,
 
-            response["kem_public_key"]
+            response["kem_public_key"],
+            request
 
         ):
 
