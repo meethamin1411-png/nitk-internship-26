@@ -1,0 +1,108 @@
+================================================================================
+BAN LOGIC VERIFICATION REPORT
+================================================================================
+Engine   : BAN Logic Verification Engine
+Version  : 3.0
+Protocol : PQC-CMAKA
+
+--------------------------------------------------------------------------------
+PROTOCOL PARTICIPANTS
+--------------------------------------------------------------------------------
+• Vehicle
+• RSU
+• Trusted Authority
+
+--------------------------------------------------------------------------------
+PROTOCOL MESSAGES
+--------------------------------------------------------------------------------
+M1 : Vehicle → RSU
+M2 : RSU → Vehicle
+M3 : Vehicle → RSU
+M4 : RSU → Vehicle
+
+--------------------------------------------------------------------------------
+DERIVED BELIEFS
+--------------------------------------------------------------------------------
+
+[Vehicle]
+  Vehicle ⊢ (RSU ONCE_SAID Nr)
+  Vehicle ⊢ (Trusted Authority TRUSTS Trusted Authority)
+  Vehicle ⊢ (Vehicle AUTHENTICATED RSU)
+  Vehicle ⊢ (Vehicle SESSION_KEY RSU)
+
+[RSU]
+  RSU ⊢ (RSU AUTHENTICATED Vehicle)
+  RSU ⊢ (RSU SESSION_KEY Vehicle)
+  RSU ⊢ (Trusted Authority TRUSTS Trusted Authority)
+  RSU ⊢ (Vehicle ONCE_SAID Nv)
+
+[Trusted Authority]
+  Trusted Authority ⊢ (RSU AUTHENTICATED Vehicle)
+  Trusted Authority ⊢ (Vehicle AUTHENTICATED RSU)
+
+--------------------------------------------------------------------------------
+BAN PROOF
+--------------------------------------------------------------------------------
+
+STEP 1
+Rule : MESSAGE_MEANING
+Status : PASSED
+Input Facts:
+   • RSU received authenticated message from Vehicle
+Derived : RSU believes (Vehicle once_said Nv)
+
+STEP 2
+Rule : MESSAGE_MEANING
+Status : PASSED
+Input Facts:
+   • Vehicle received authenticated message from RSU
+Derived : Vehicle believes (RSU once_said Nr)
+
+STEP 3
+Rule : SESSION_KEY
+Status : PASSED
+Input Facts:
+   • RSU received authenticated message from Vehicle
+Derived : RSU believes (RSU session_key Vehicle)
+
+STEP 4
+Rule : KEY_CONFIRMATION
+Status : PASSED
+Input Facts:
+   • Vehicle received authenticated message from RSU
+Derived : Vehicle believes (Vehicle authenticated RSU)
+
+STEP 5
+Rule : KEY_CONFIRMATION
+Status : PASSED
+Input Facts:
+   • RSU received authenticated message from Vehicle
+Derived : RSU believes (RSU authenticated Vehicle)
+
+STEP 6
+Rule : SESSION_KEY
+Status : PASSED
+Input Facts:
+   • Shared key with RSU
+Derived : Vehicle believes (Vehicle session_key RSU)
+Remarks : Session key inferred.
+
+--------------------------------------------------------------------------------
+SECURITY GOALS
+--------------------------------------------------------------------------------
+MUTUAL_AUTHENTICATION               : PASS
+SESSION_KEY_AGREEMENT               : PASS
+SESSION_KEY_FRESHNESS               : PASS
+KEY_CONFIRMATION                    : PASS
+
+--------------------------------------------------------------------------------
+ENGINE STATISTICS
+--------------------------------------------------------------------------------
+Participants      : 3
+Messages          : 4
+Proof Steps       : 6
+Verified Goals    : 4/4
+
+================================================================================
+FINAL RESULT : PROTOCOL SUCCESSFULLY VERIFIED
+================================================================================

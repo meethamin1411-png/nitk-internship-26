@@ -1,0 +1,46 @@
+BAN LOGIC REPORT
+
+GENERAL STATISTICS
+Parameter,Value
+participants,3
+messages,4
+proof_steps,6
+verified_goals,6
+
+VERIFICATION RESULTS
+Goal,Status
+protocol_validation,True
+validation_errors,[]
+Goal.MUTUAL_AUTHENTICATION,True
+Goal.SESSION_KEY_AGREEMENT,True
+Goal.SESSION_KEY_FRESHNESS,True
+Goal.KEY_CONFIRMATION,True
+
+PROTOCOL MESSAGES
+Message,Sender,Receiver,Nonce,Timestamp
+M1,Vehicle,RSU,Nv,Tv
+M2,RSU,Vehicle,Nr,Tr
+M3,Vehicle,RSU,,T3
+M4,RSU,Vehicle,,Ts
+
+BELIEFS
+Owner,Belief
+Vehicle,Vehicle ⊢ (RSU ONCE_SAID Nr)
+Vehicle,Vehicle ⊢ (Trusted Authority TRUSTS Trusted Authority)
+Vehicle,Vehicle ⊢ (Vehicle AUTHENTICATED RSU)
+Vehicle,Vehicle ⊢ (Vehicle SESSION_KEY RSU)
+RSU,RSU ⊢ (RSU AUTHENTICATED Vehicle)
+RSU,RSU ⊢ (RSU SESSION_KEY Vehicle)
+RSU,RSU ⊢ (Trusted Authority TRUSTS Trusted Authority)
+RSU,RSU ⊢ (Vehicle ONCE_SAID Nv)
+Trusted Authority,Trusted Authority ⊢ (RSU AUTHENTICATED Vehicle)
+Trusted Authority,Trusted Authority ⊢ (Vehicle AUTHENTICATED RSU)
+
+PROOF STEPS
+Step,Rule,Derived Fact,Status
+1,MESSAGE_MEANING,RSU believes (Vehicle once_said Nv),PASSED
+2,MESSAGE_MEANING,Vehicle believes (RSU once_said Nr),PASSED
+3,SESSION_KEY,RSU believes (RSU session_key Vehicle),PASSED
+4,KEY_CONFIRMATION,Vehicle believes (Vehicle authenticated RSU),PASSED
+5,KEY_CONFIRMATION,RSU believes (RSU authenticated Vehicle),PASSED
+6,SESSION_KEY,Vehicle believes (Vehicle session_key RSU),PASSED

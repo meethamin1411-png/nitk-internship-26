@@ -20,8 +20,10 @@ from common.models import (
     VehicleContext,
     ThreatResult,
 )
-
-
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Dict, List
+from enum import Enum
 # =========================================================
 # Threat Evaluation Engine
 # =========================================================
@@ -41,16 +43,62 @@ class ThreatEvaluation:
 
     def __init__(self):
 
-        self.maximum_score = 23
+        # =====================================================
+        # Existing Configuration
+        # =====================================================
+
+        self.maximum_score = 20
+
+        # =====================================================
+        # Vehicle Threat Database
+        # =====================================================
+
+        self.vehicle_database: Dict[str, VehicleThreatRecord] = {}
+
+        # =====================================================
+        # Research Statistics
+        # =====================================================
+
+        self.total_registered = 0
+
+        self.total_events = 0
+
+        self.event_statistics = {
+            "Traffic Density": 0,
+            "Road Type": 0,
+            "High Speed": 0,
+            "Security Alert": 0,
+            "Low RSU Trust": 0,
+            "Emergency Mode": 0
+        }
 
         print()
-
+        print("=" * 65)
+        print("Threat Evaluation Engine V2 Initialized")
         print("=" * 65)
 
-        print("Threat Evaluation Engine Initialized")
+    # =====================================================
+    # Register Vehicle
+    # =====================================================
 
-        print("=" * 65)
-            # =====================================================
+    def register_vehicle(self, vehicle_id):
+
+        if vehicle_id not in self.vehicle_database:
+
+            self.vehicle_database[vehicle_id] = VehicleThreatRecord(
+                vehicle_id
+            )
+
+            self.total_registered += 1
+
+# =====================================================
+# Get Vehicle Record
+# =====================================================
+
+    def get_vehicle_record(self, vehicle_id):
+
+      return self.vehicle_database.get(vehicle_id)
+    # =====================================================
     # Calculate Threat Score
     # =====================================================
 

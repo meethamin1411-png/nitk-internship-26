@@ -1,0 +1,199 @@
+{
+    "participants": [
+        "Vehicle",
+        "RSU",
+        "Trusted Authority"
+    ],
+    "messages": [
+        {
+            "message_id": "M1",
+            "sender": "Vehicle",
+            "receiver": "RSU",
+            "message_type": "AUTHENTICATION",
+            "pseudonym": "PID001",
+            "authentication_code": "ACT001",
+            "nonce": "Nv",
+            "timestamp": "Tv",
+            "signature": "MLDSA_SIG_V",
+            "kem_public_key": "PK_V",
+            "kem_ciphertext": null,
+            "session_key": null,
+            "payload": {}
+        },
+        {
+            "message_id": "M2",
+            "sender": "RSU",
+            "receiver": "Vehicle",
+            "message_type": "AUTHENTICATION",
+            "pseudonym": "PID001",
+            "authentication_code": "ACT001",
+            "nonce": "Nr",
+            "timestamp": "Tr",
+            "signature": "MLDSA_SIG_R",
+            "kem_public_key": "PK_R",
+            "kem_ciphertext": null,
+            "session_key": null,
+            "payload": {}
+        },
+        {
+            "message_id": "M3",
+            "sender": "Vehicle",
+            "receiver": "RSU",
+            "message_type": "KEY_EXCHANGE",
+            "pseudonym": null,
+            "authentication_code": null,
+            "nonce": null,
+            "timestamp": "T3",
+            "signature": "MLDSA_SIG_V",
+            "kem_public_key": null,
+            "kem_ciphertext": "CT_KEM",
+            "session_key": null,
+            "payload": {}
+        },
+        {
+            "message_id": "M4",
+            "sender": "RSU",
+            "receiver": "Vehicle",
+            "message_type": "CONFIRMATION",
+            "pseudonym": null,
+            "authentication_code": null,
+            "nonce": null,
+            "timestamp": "Ts",
+            "signature": "MLDSA_SIG_CONFIRM",
+            "kem_public_key": null,
+            "kem_ciphertext": null,
+            "session_key": "SESSION_KEY_001",
+            "payload": {}
+        }
+    ],
+    "proof_steps": [
+        {
+            "step_number": 1,
+            "rule": "MESSAGE_MEANING",
+            "input_facts": [
+                "RSU received authenticated message from Vehicle"
+            ],
+            "derived_fact": "RSU believes (Vehicle once_said Nv)",
+            "status": "PASSED",
+            "timestamp": "2026-07-20T16:59:54.141100",
+            "remarks": null
+        },
+        {
+            "step_number": 2,
+            "rule": "MESSAGE_MEANING",
+            "input_facts": [
+                "Vehicle received authenticated message from RSU"
+            ],
+            "derived_fact": "Vehicle believes (RSU once_said Nr)",
+            "status": "PASSED",
+            "timestamp": "2026-07-20T16:59:54.141100",
+            "remarks": null
+        },
+        {
+            "step_number": 3,
+            "rule": "SESSION_KEY",
+            "input_facts": [
+                "RSU received authenticated message from Vehicle"
+            ],
+            "derived_fact": "RSU believes (RSU session_key Vehicle)",
+            "status": "PASSED",
+            "timestamp": "2026-07-20T16:59:54.141100",
+            "remarks": null
+        },
+        {
+            "step_number": 4,
+            "rule": "KEY_CONFIRMATION",
+            "input_facts": [
+                "Vehicle received authenticated message from RSU"
+            ],
+            "derived_fact": "Vehicle believes (Vehicle authenticated RSU)",
+            "status": "PASSED",
+            "timestamp": "2026-07-20T16:59:54.141100",
+            "remarks": null
+        },
+        {
+            "step_number": 5,
+            "rule": "KEY_CONFIRMATION",
+            "input_facts": [
+                "RSU received authenticated message from Vehicle"
+            ],
+            "derived_fact": "RSU believes (RSU authenticated Vehicle)",
+            "status": "PASSED",
+            "timestamp": "2026-07-20T16:59:54.141100",
+            "remarks": null
+        },
+        {
+            "step_number": 6,
+            "rule": "SESSION_KEY",
+            "input_facts": [
+                "Shared key with RSU"
+            ],
+            "derived_fact": "Vehicle believes (Vehicle session_key RSU)",
+            "status": "PASSED",
+            "timestamp": "2026-07-20T16:59:54.141100",
+            "remarks": "Session key inferred."
+        }
+    ],
+    "beliefs": {
+        "Vehicle": [
+            "Vehicle ⊢ (RSU ONCE_SAID Nr)",
+            "Vehicle ⊢ (Trusted Authority TRUSTS Trusted Authority)",
+            "Vehicle ⊢ (Vehicle AUTHENTICATED RSU)",
+            "Vehicle ⊢ (Vehicle SESSION_KEY RSU)"
+        ],
+        "RSU": [
+            "RSU ⊢ (RSU AUTHENTICATED Vehicle)",
+            "RSU ⊢ (RSU SESSION_KEY Vehicle)",
+            "RSU ⊢ (Trusted Authority TRUSTS Trusted Authority)",
+            "RSU ⊢ (Vehicle ONCE_SAID Nv)"
+        ],
+        "Trusted Authority": [
+            "Trusted Authority ⊢ (RSU AUTHENTICATED Vehicle)",
+            "Trusted Authority ⊢ (Vehicle AUTHENTICATED RSU)"
+        ]
+    },
+    "freshness": {
+        "Vehicle": [
+            "Fresh(Nv)",
+            "Fresh(SessionKey)"
+        ],
+        "RSU": [
+            "Fresh(Nr)",
+            "Fresh(SessionKey)"
+        ],
+        "Trusted Authority": []
+    },
+    "shared_keys": {
+        "Vehicle": [
+            {
+                "owner": "Vehicle",
+                "peer": "RSU",
+                "key": "SessionKey",
+                "algorithm": "ML-KEM"
+            }
+        ],
+        "RSU": [
+            {
+                "owner": "RSU",
+                "peer": "Vehicle",
+                "key": "SessionKey",
+                "algorithm": "ML-KEM"
+            }
+        ],
+        "Trusted Authority": []
+    },
+    "verification_results": {
+        "protocol_validation": true,
+        "validation_errors": [],
+        "MUTUAL_AUTHENTICATION": true,
+        "SESSION_KEY_AGREEMENT": true,
+        "SESSION_KEY_FRESHNESS": true,
+        "KEY_CONFIRMATION": true
+    },
+    "statistics": {
+        "participants": 3,
+        "messages": 4,
+        "proof_steps": 6,
+        "verified_goals": 6
+    }
+}

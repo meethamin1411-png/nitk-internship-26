@@ -1,0 +1,19 @@
+======================================================================
+BAN LOGIC EQUATIONS
+======================================================================
+
+[Vehicle]
+Vehicle ⊢ (RSU ONCE_SAID Nr)
+Vehicle ⊢ (Trusted Authority TRUSTS Trusted Authority)
+Vehicle ⊢ (Vehicle AUTHENTICATED RSU)
+Vehicle ⊢ (Vehicle SESSION_KEY RSU)
+
+[RSU]
+RSU ⊢ (RSU AUTHENTICATED Vehicle)
+RSU ⊢ (RSU SESSION_KEY Vehicle)
+RSU ⊢ (Trusted Authority TRUSTS Trusted Authority)
+RSU ⊢ (Vehicle ONCE_SAID Nv)
+
+[Trusted Authority]
+Trusted Authority ⊢ (RSU AUTHENTICATED Vehicle)
+Trusted Authority ⊢ (Vehicle AUTHENTICATED RSU)
