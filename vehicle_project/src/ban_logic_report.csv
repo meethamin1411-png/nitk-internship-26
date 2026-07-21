@@ -25,16 +25,16 @@ M4,RSU,Vehicle,,Ts
 
 BELIEFS
 Owner,Belief
-Vehicle,Vehicle ⊢ (RSU ONCE_SAID Nr)
-Vehicle,Vehicle ⊢ (Trusted Authority TRUSTS Trusted Authority)
-Vehicle,Vehicle ⊢ (Vehicle AUTHENTICATED RSU)
-Vehicle,Vehicle ⊢ (Vehicle SESSION_KEY RSU)
-RSU,RSU ⊢ (RSU AUTHENTICATED Vehicle)
-RSU,RSU ⊢ (RSU SESSION_KEY Vehicle)
-RSU,RSU ⊢ (Trusted Authority TRUSTS Trusted Authority)
-RSU,RSU ⊢ (Vehicle ONCE_SAID Nv)
-Trusted Authority,Trusted Authority ⊢ (RSU AUTHENTICATED Vehicle)
-Trusted Authority,Trusted Authority ⊢ (Vehicle AUTHENTICATED RSU)
+Vehicle,Vehicle |≡ (RSU |~ Nr)
+Vehicle,Vehicle |≡ (Trusted Authority ⇔ Trusted Authority)
+Vehicle,Vehicle |≡ (Vehicle ≡ RSU)
+Vehicle,Vehicle |≡ (Vehicle ↔K RSU)
+RSU,RSU |≡ (RSU ≡ Vehicle)
+RSU,RSU |≡ (RSU ↔K Vehicle)
+RSU,RSU |≡ (Trusted Authority ⇔ Trusted Authority)
+RSU,RSU |≡ (Vehicle |~ Nv)
+Trusted Authority,Trusted Authority |≡ (RSU ≡ Vehicle)
+Trusted Authority,Trusted Authority |≡ (Vehicle ≡ RSU)
 
 PROOF STEPS
 Step,Rule,Derived Fact,Status

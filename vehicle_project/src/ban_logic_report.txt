@@ -25,20 +25,20 @@ DERIVED BELIEFS
 --------------------------------------------------------------------------------
 
 [Vehicle]
-  Vehicle ⊢ (RSU ONCE_SAID Nr)
-  Vehicle ⊢ (Trusted Authority TRUSTS Trusted Authority)
-  Vehicle ⊢ (Vehicle AUTHENTICATED RSU)
-  Vehicle ⊢ (Vehicle SESSION_KEY RSU)
+  Vehicle |≡ (RSU |~ Nr)
+  Vehicle |≡ (Trusted Authority ⇔ Trusted Authority)
+  Vehicle |≡ (Vehicle ≡ RSU)
+  Vehicle |≡ (Vehicle ↔K RSU)
 
 [RSU]
-  RSU ⊢ (RSU AUTHENTICATED Vehicle)
-  RSU ⊢ (RSU SESSION_KEY Vehicle)
-  RSU ⊢ (Trusted Authority TRUSTS Trusted Authority)
-  RSU ⊢ (Vehicle ONCE_SAID Nv)
+  RSU |≡ (RSU ≡ Vehicle)
+  RSU |≡ (RSU ↔K Vehicle)
+  RSU |≡ (Trusted Authority ⇔ Trusted Authority)
+  RSU |≡ (Vehicle |~ Nv)
 
 [Trusted Authority]
-  Trusted Authority ⊢ (RSU AUTHENTICATED Vehicle)
-  Trusted Authority ⊢ (Vehicle AUTHENTICATED RSU)
+  Trusted Authority |≡ (RSU ≡ Vehicle)
+  Trusted Authority |≡ (Vehicle ≡ RSU)
 
 --------------------------------------------------------------------------------
 BAN PROOF

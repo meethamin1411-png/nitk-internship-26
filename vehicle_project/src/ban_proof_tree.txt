@@ -9,7 +9,7 @@ MESSAGE_MEANING
 │     • RSU received authenticated message from Vehicle
 │
 ├── Derived
-│     RSU believes (Vehicle once_said Nv)
+│     RSU |≡ (Vehicle |~ Nv)
 │
 └── Status : PASSED
 ├── Step 2
@@ -17,7 +17,7 @@ MESSAGE_MEANING
 │     • Vehicle received authenticated message from RSU
 │
 ├── Derived
-│     Vehicle believes (RSU once_said Nr)
+│     Vehicle |≡ (RSU |~ Nr)
 │
 └── Status : PASSED
 
@@ -28,7 +28,7 @@ SESSION_KEY
 │     • RSU received authenticated message from Vehicle
 │
 ├── Derived
-│     RSU believes (RSU session_key Vehicle)
+│     RSU |≡ (RSU ↔K Vehicle)
 │
 └── Status : PASSED
 
@@ -39,7 +39,7 @@ KEY_CONFIRMATION
 │     • Vehicle received authenticated message from RSU
 │
 ├── Derived
-│     Vehicle believes (Vehicle authenticated RSU)
+│     Vehicle |≡ (Vehicle ≡ RSU)
 │
 └── Status : PASSED
 ├── Step 5
@@ -47,7 +47,7 @@ KEY_CONFIRMATION
 │     • RSU received authenticated message from Vehicle
 │
 ├── Derived
-│     RSU believes (RSU authenticated Vehicle)
+│     RSU |≡ (RSU ≡ Vehicle)
 │
 └── Status : PASSED
 
@@ -58,6 +58,6 @@ SESSION_KEY
 │     • Shared key with RSU
 │
 ├── Derived
-│     Vehicle believes (Vehicle session_key RSU)
+│     Vehicle |≡ (Vehicle ↔K RSU)
 │
 └── Status : PASSED

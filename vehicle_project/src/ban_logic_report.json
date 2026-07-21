@@ -75,7 +75,7 @@
             ],
             "derived_fact": "RSU believes (Vehicle once_said Nv)",
             "status": "PASSED",
-            "timestamp": "2026-07-20T16:59:54.141100",
+            "timestamp": "2026-07-21T19:51:56.474943",
             "remarks": null
         },
         {
@@ -86,7 +86,7 @@
             ],
             "derived_fact": "Vehicle believes (RSU once_said Nr)",
             "status": "PASSED",
-            "timestamp": "2026-07-20T16:59:54.141100",
+            "timestamp": "2026-07-21T19:51:56.474943",
             "remarks": null
         },
         {
@@ -97,7 +97,7 @@
             ],
             "derived_fact": "RSU believes (RSU session_key Vehicle)",
             "status": "PASSED",
-            "timestamp": "2026-07-20T16:59:54.141100",
+            "timestamp": "2026-07-21T19:51:56.474943",
             "remarks": null
         },
         {
@@ -108,7 +108,7 @@
             ],
             "derived_fact": "Vehicle believes (Vehicle authenticated RSU)",
             "status": "PASSED",
-            "timestamp": "2026-07-20T16:59:54.141100",
+            "timestamp": "2026-07-21T19:51:56.474943",
             "remarks": null
         },
         {
@@ -119,7 +119,7 @@
             ],
             "derived_fact": "RSU believes (RSU authenticated Vehicle)",
             "status": "PASSED",
-            "timestamp": "2026-07-20T16:59:54.141100",
+            "timestamp": "2026-07-21T19:51:56.474943",
             "remarks": null
         },
         {
@@ -130,26 +130,26 @@
             ],
             "derived_fact": "Vehicle believes (Vehicle session_key RSU)",
             "status": "PASSED",
-            "timestamp": "2026-07-20T16:59:54.141100",
+            "timestamp": "2026-07-21T19:51:56.475977",
             "remarks": "Session key inferred."
         }
     ],
     "beliefs": {
         "Vehicle": [
-            "Vehicle ⊢ (RSU ONCE_SAID Nr)",
-            "Vehicle ⊢ (Trusted Authority TRUSTS Trusted Authority)",
-            "Vehicle ⊢ (Vehicle AUTHENTICATED RSU)",
-            "Vehicle ⊢ (Vehicle SESSION_KEY RSU)"
+            "Vehicle |≡ (RSU |~ Nr)",
+            "Vehicle |≡ (Trusted Authority ⇔ Trusted Authority)",
+            "Vehicle |≡ (Vehicle ≡ RSU)",
+            "Vehicle |≡ (Vehicle ↔K RSU)"
         ],
         "RSU": [
-            "RSU ⊢ (RSU AUTHENTICATED Vehicle)",
-            "RSU ⊢ (RSU SESSION_KEY Vehicle)",
-            "RSU ⊢ (Trusted Authority TRUSTS Trusted Authority)",
-            "RSU ⊢ (Vehicle ONCE_SAID Nv)"
+            "RSU |≡ (RSU ≡ Vehicle)",
+            "RSU |≡ (RSU ↔K Vehicle)",
+            "RSU |≡ (Trusted Authority ⇔ Trusted Authority)",
+            "RSU |≡ (Vehicle |~ Nv)"
         ],
         "Trusted Authority": [
-            "Trusted Authority ⊢ (RSU AUTHENTICATED Vehicle)",
-            "Trusted Authority ⊢ (Vehicle AUTHENTICATED RSU)"
+            "Trusted Authority |≡ (RSU ≡ Vehicle)",
+            "Trusted Authority |≡ (Vehicle ≡ RSU)"
         ]
     },
     "freshness": {

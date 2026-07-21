@@ -28,9 +28,9 @@ import secrets
 # Configuration
 # =========================================================
 
-NUMBER_OF_RSUS = 1
+NUMBER_OF_RSUS = 2
 
-NUMBER_OF_VEHICLES = 2
+NUMBER_OF_VEHICLES = 5
 
 
 def main():

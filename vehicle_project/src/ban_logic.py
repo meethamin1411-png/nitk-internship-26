@@ -1,5 +1,4 @@
-"""
-===============================================================================
+"""===============================================================================
                      BAN LOGIC VERIFICATION ENGINE
 ===============================================================================
 
@@ -162,7 +161,6 @@ class Expression:
     subject: str
     predicate: Predicate
     object: Any
-
     def __str__(self) -> str:
         """Returns a readable BAN Logic expression."""
         return (
@@ -172,17 +170,24 @@ class Expression:
         )
 
     def to_equation(self) -> str:
-        """
-        Converts the expression into BAN notation for reports.
+        symbols = {
+            Predicate.BELIEVES: "|≡",
+            Predicate.ONCE_SAID: "|~",
+            Predicate.FRESH: "#",
+            Predicate.TRUSTS: "⇔",
+            Predicate.CONTROLS: "⇒",
+            Predicate.SHARES_KEY: "↔K",
+            Predicate.AUTHENTICATED: "≡",
+            Predicate.SESSION_KEY: "↔K",
+            Predicate.KNOWS: "⊳"
+        }
 
-        Example:
-            RSU ONCE_SAID Nv
-        """
-        return (
-            f"{self.subject} "
-            f"{self.predicate.name} "
-            f"{self.object}"
-        )
+        symbol = symbols.get(self.predicate, self.predicate.name)
+
+        if self.predicate == Predicate.FRESH:
+            return f"{symbol}({self.object})"
+
+        return f"{self.subject} {symbol} {self.object}"
 
     def as_tuple(self):
         """
@@ -193,8 +198,8 @@ class Expression:
             self.subject,
             self.predicate,
             self.object
-        )
-        # =============================================================================
+        ) 
+ # =============================================================================
 # PART 3 : BAN Belief
 # =============================================================================
 
@@ -232,7 +237,7 @@ class Belief:
             Vehicle ⊢ (RSU ONCE_SAID Nv)
         """
         return (
-            f"{self.owner} ⊢ "
+            f"{self.owner} |≡ "
             f"({self.expression.to_equation()})"
         )
 
@@ -2200,16 +2205,16 @@ class BANLogicEngine:
 
         print("\nInitial BAN Assumptions")
         print("-----------------------")
-        print("A1  Vehicle trusts Trusted Authority")
-        print("A2  RSU trusts Trusted Authority")
-        print("A3  Trusted Authority controls Vehicle identity")
-        print("A4  Trusted Authority controls RSU identity")
-        print("A5  Fresh(Nv)")
-        print("A6  Fresh(Nr)")
-        print("A7  Vehicle and RSU can establish a shared ML-KEM session key")
-        print("A8  Vehicle and RSU are registered participants")
-        print("A9  Fresh(SessionKey) at Vehicle")
-        print("A10 Fresh(SessionKey) at RSU")
+        print("A1  Vehicle |≡ (TA ⇒ Vehicle Identity)")
+        print("A2  RSU |≡ (TA ⇒ RSU Identity)")
+        print("A3  Vehicle |≡ #(Nv)")
+        print("A4  RSU |≡ #(Nr)")
+        print("A5  Vehicle |≡ (Vehicle ↔K RSU)")
+        print("A6  RSU |≡ (RSU ↔K Vehicle)")
+        print("A7  Vehicle |≡ #(SessionKey)")
+        print("A8  RSU |≡ #(SessionKey)")
+        print("A9  TA |≡ (Vehicle ≡ RSU)")
+        print("A10 TA |≡ (RSU ≡ Vehicle)")        
 
         print("\n" + "-" * 70)
         print("MESSAGE M1 : Vehicle → RSU")
@@ -2223,7 +2228,7 @@ class BANLogicEngine:
         print("\nApplied Rule")
         print("  MESSAGE_MEANING")
         print("\nDerived Belief")
-        print("  RSU believes Vehicle once said Nv")
+        print("  RSU |≡ (Vehicle |~ Nv)")
 
         print("\n" + "-" * 70)
         print("MESSAGE M2 : RSU → Vehicle")
@@ -2236,7 +2241,7 @@ class BANLogicEngine:
         print("\nApplied Rule")
         print("  MESSAGE_MEANING")
         print("\nDerived Belief")
-        print("  Vehicle believes RSU once said Nr")
+        print("  Vehicle |≡ (RSU |~ Nr)")
 
         print("\n" + "-" * 70)
         print("MESSAGE M3 : Vehicle → RSU")
@@ -2248,7 +2253,7 @@ class BANLogicEngine:
         print("\nApplied Rule")
         print("  SESSION_KEY")
         print("\nDerived Belief")
-        print("  RSU believes shared session key established")
+        print("  RSU |≡ (RSU ↔K Vehicle)" )
 
         print("\n" + "-" * 70)
         print("MESSAGE M4 : RSU → Vehicle")
@@ -2259,8 +2264,8 @@ class BANLogicEngine:
         print("\nApplied Rule")
         print("  KEY_CONFIRMATION")
         print("\nDerived Belief")
-        print("  Vehicle authenticates RSU")
-        print("  RSU authenticates Vehicle")
+        print("  Vehicle |≡ (Vehicle ≡ RSU)")
+        print("  RSU |≡ (RSU ≡ Vehicle)")
 
         print("\n" + "=" * 70)
         print("FORMAL VERIFICATION SUMMARY")
@@ -2291,9 +2296,9 @@ class BANLogicEngine:
                 file.write(line + "\n")
 
         print(f"\nBAN equations exported to '{filename}'")
-        # =============================================================================
-# PART 17 : Proof Tree Generator
-# =============================================================================
+       # =============================================================================
+    # PART 17 : Proof Tree Generator
+    # =============================================================================
 
     def generate_proof_tree(self) -> List[str]:
         """
@@ -2313,9 +2318,7 @@ class BANLogicEngine:
         tree.append("=" * 80)
 
         if not self.proof_steps:
-
             tree.append("No proof steps available.")
-
             return tree
 
         current_rule = None
@@ -2323,7 +2326,6 @@ class BANLogicEngine:
         for step in self.proof_steps:
 
             if current_rule != step.rule:
-
                 current_rule = step.rule
 
                 tree.append("")
@@ -2331,36 +2333,27 @@ class BANLogicEngine:
                 tree.append("│")
 
             tree.append(f"├── Step {step.step_number}")
-
             tree.append("│   Input Facts")
 
             if step.input_facts:
-
                 for fact in step.input_facts:
-
                     tree.append(f"│     • {fact}")
-
             else:
-
                 tree.append("│     None")
 
             tree.append("│")
+            tree.append("├── Derived")
 
-            tree.append(
-                f"├── Derived"
-            )
+            derived = str(step.derived_fact)
+            derived = derived.replace("believes", "|≡")
+            derived = derived.replace("once_said", "|~")
+            derived = derived.replace("session_key", "↔K")
+            derived = derived.replace("authenticated", "≡")
 
-            tree.append(
-                f"│     {step.derived_fact}"
-            )
+            tree.append(f"│     {derived}")
 
-            tree.append(
-                f"│"
-            )
-
-            tree.append(
-                f"└── Status : {step.status}"
-            )
+            tree.append("│")
+            tree.append(f"└── Status : {step.status}")
 
         return tree
 
