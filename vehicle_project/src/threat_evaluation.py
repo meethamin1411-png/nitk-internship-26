@@ -47,7 +47,7 @@ class ThreatEvaluation:
         # Existing Configuration
         # =====================================================
 
-        self.maximum_score = 20
+        self.maximum_score = 23
 
         # =====================================================
         # Vehicle Threat Database

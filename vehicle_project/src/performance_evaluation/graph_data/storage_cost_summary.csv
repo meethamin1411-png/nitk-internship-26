@@ -1,0 +1,9 @@
+Component,Bytes
+ML-DSA Public Key,1952
+ML-DSA Secret Key,4032
+ML-KEM Public Key,1184
+ML-KEM Secret Key,2400
+Partial Public Key,32
+Partial Private Key,32
+Pseudonym,0
+Total,9632

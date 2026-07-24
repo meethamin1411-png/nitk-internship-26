@@ -1,0 +1,12 @@
+Field,Bytes
+sender_id,10
+sender_pseudonym,24
+receiver,24
+timestamp,8
+nonce,16
+road_segment,6
+vehicle_state,6
+act,64
+signature,3309
+kem_public_key,1184
+Total,4651

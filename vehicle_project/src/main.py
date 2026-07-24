@@ -22,6 +22,7 @@ from mitm_attack_demo import MITMAttack
 from sybil_attack import SybilAttack
 from lightweight_revocation import LightweightRevocation
 import secrets
+from performance_evaluation.performance_manager import metrics_logger
 
 
 # =========================================================
@@ -1080,7 +1081,11 @@ def main():
     print("=" * 75)
     print("OVERALL SECURITY LEVEL : EXCELLENT")
     print("=" * 75)
+    metrics_logger.export_all_csv()
 
+    print("\nPerformance CSV files generated successfully.")
+ 
 if __name__ == "__main__":
 
     main()
+    
