@@ -1,0 +1,63 @@
+================================================================================
+BAN LOGIC PROOF TREE
+================================================================================
+
+MESSAGE_MEANING
+│
+├── Step 1
+│   Input Facts
+│     • RSU received authenticated message from Vehicle
+│
+├── Derived
+│     RSU |≡ (Vehicle |~ Nv)
+│
+└── Status : PASSED
+├── Step 2
+│   Input Facts
+│     • Vehicle received authenticated message from RSU
+│
+├── Derived
+│     Vehicle |≡ (RSU |~ Nr)
+│
+└── Status : PASSED
+
+SESSION_KEY
+│
+├── Step 3
+│   Input Facts
+│     • RSU received authenticated message from Vehicle
+│
+├── Derived
+│     RSU |≡ (RSU ↔K Vehicle)
+│
+└── Status : PASSED
+
+KEY_CONFIRMATION
+│
+├── Step 4
+│   Input Facts
+│     • Vehicle received authenticated message from RSU
+│
+├── Derived
+│     Vehicle |≡ (Vehicle ≡ RSU)
+│
+└── Status : PASSED
+├── Step 5
+│   Input Facts
+│     • RSU received authenticated message from Vehicle
+│
+├── Derived
+│     RSU |≡ (RSU ≡ Vehicle)
+│
+└── Status : PASSED
+
+SESSION_KEY
+│
+├── Step 6
+│   Input Facts
+│     • Shared key with RSU
+│
+├── Derived
+│     Vehicle |≡ (Vehicle ↔K RSU)
+│
+└── Status : PASSED

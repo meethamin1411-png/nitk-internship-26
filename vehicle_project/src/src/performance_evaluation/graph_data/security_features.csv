@@ -1,0 +1,13 @@
+Feature,Supported
+Mutual Authentication,Yes
+Post-Quantum Security,Yes
+Conditional Privacy,Yes
+Identity Protection,Yes
+Dynamic Pseudonyms,Yes
+Replay Protection,Yes
+MITM Resistance,Yes
+Forward Secrecy,Yes
+Context Awareness,Yes
+Threat Evaluation,Yes
+Certificate-less Authentication,Yes
+Authentication State Machine,Yes

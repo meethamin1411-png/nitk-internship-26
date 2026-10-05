@@ -34,6 +34,191 @@ NUMBER_OF_RSUS = 2
 NUMBER_OF_VEHICLES = 5
 
 
+
+# =========================================================
+# Communication Overhead Measurement
+# =========================================================
+
+def _encode_measurement_value(value):
+    """
+    Convert a protocol field into deterministic bytes for
+    application-layer communication-overhead measurement.
+
+    This measurement is independent of Python's dictionary
+    representation. Binary cryptographic values remain raw bytes;
+    text is UTF-8 encoded; integers use 8-byte unsigned encoding.
+    """
+    if isinstance(value, bytes):
+        return value
+
+    if isinstance(value, bytearray):
+        return bytes(value)
+
+    if isinstance(value, int):
+        return value.to_bytes(8, byteorder="big", signed=False)
+
+    return str(value).encode("utf-8")
+
+
+def _serialize_protocol_packet(packet, field_order):
+    """
+    Serialize a protocol packet using a deterministic length-prefixed
+    application-layer format.
+
+    Each field is encoded as:
+        4-byte field length || field value
+
+    Field names are not transmitted because the protocol defines the
+    field order. Transport/network headers are not included.
+    """
+    serialized = bytearray()
+
+    for field_name in field_order:
+        value = _encode_measurement_value(packet[field_name])
+        serialized.extend(len(value).to_bytes(4, byteorder="big"))
+        serialized.extend(value)
+
+    return bytes(serialized)
+
+
+def measure_protocol_overhead(ta, vehicles):
+    """
+    Measure the serialized application-layer sizes of M1-M4.
+
+    A separate MutualAuthentication instance is used so that the
+    measurement does not alter the main authentication statistics.
+
+    The responder's long-term ML-KEM public key is provisioned and is
+    not transmitted. The fresh ephemeral ML-KEM public key is transmitted
+    in M2 and is therefore included in the measured overhead.
+    """
+    if len(vehicles) < 2:
+        print("Communication overhead measurement skipped: "
+              "at least 2 vehicles are required.")
+        return None
+
+    # Use a separate manager so measurement traffic is not counted
+    # as another successful authentication.
+    measurement_manager = MutualAuthentication(ta)
+
+    sender = vehicles[0]
+    responder = vehicles[1]
+
+    print("\n")
+    print("=" * 70)
+    print("COMMUNICATION OVERHEAD MEASUREMENT")
+    print("=" * 70)
+    print("Measurement uses the implemented M1-M4 packet fields.")
+    print("Long-term ML-KEM public key : PROVISIONED / NOT TRANSMITTED")
+    print("Ephemeral ML-KEM public key : TRANSMITTED IN M2")
+    print("Transport headers  : NOT INCLUDED")
+    print("Measurement        : Application-layer serialized bytes")
+    print("-" * 70)
+
+    # Build the same M1-M4 message structures used by the protocol.
+    m1 = measurement_manager.create_auth_request(sender, responder)
+    m2 = measurement_manager.create_auth_response(responder, sender)
+
+    m3_state = measurement_manager.create_m3_kem_message(
+        sender,
+        responder,
+        m1,
+        m2,
+    )
+    m3 = m3_state["m3"]
+
+    sender_session_key = measurement_manager._derive_context_key(
+        m3_state["shared_secret"],
+        m1,
+        m2,
+    )
+
+    if sender_session_key is None:
+        print("Communication overhead measurement failed: "
+              "session key could not be derived.")
+        return None
+
+    m4 = measurement_manager.create_m4_confirmation(
+        responder,
+        sender,
+        m1,
+        m2,
+        sender_session_key,
+    )
+
+    # Exact field order follows the implemented protocol packet structures.
+    m1_bytes = _serialize_protocol_packet(
+        m1,
+        [
+            "sender_pseudonym",
+            "receiver",
+            "timestamp",
+            "nonce",
+            "road_segment",
+            "vehicle_state",
+            "act",
+            "signature",
+        ],
+    )
+
+    m2_bytes = _serialize_protocol_packet(
+        m2,
+        [
+            "responder",
+            "timestamp",
+            "nonce",
+            "ephemeral_kem_pk",
+            "signature",
+        ],
+    )
+
+    m3_bytes = _serialize_protocol_packet(
+        m3,
+        [
+            "sender_pseudonym",
+            "responder",
+            "m2_nonce",
+            "ciphertext",
+            "timestamp",
+            "road_segment",
+            "vehicle_state",
+            "signature",
+        ],
+    )
+
+    m4_bytes = _serialize_protocol_packet(
+        m4,
+        [
+            "responder",
+            "timestamp",
+            "confirmation",
+        ],
+    )
+
+    sizes = {
+        "M1": len(m1_bytes),
+        "M2": len(m2_bytes),
+        "M3": len(m3_bytes),
+        "M4": len(m4_bytes),
+    }
+
+    total = sum(sizes.values())
+
+    print(f"M1 : {sizes['M1']} bytes")
+    print(f"M2 : {sizes['M2']} bytes")
+    print(f"M3 : {sizes['M3']} bytes")
+    print(f"M4 : {sizes['M4']} bytes")
+    print("-" * 70)
+    print(f"TOTAL M1-M4 COMMUNICATION OVERHEAD : {total} bytes")
+    print("-" * 70)
+    print("Note : This is application-layer packet size only.")
+    print("       IP/TCP/UDP/MAC headers are not included.")
+    print("       The long-term/provisioned ML-KEM public key is not included.")
+    print("       The fresh ephemeral ML-KEM public key in M2 is included.")
+    print("=" * 70)
+
+    return sizes
+
 def main():
 
     print("\n")
@@ -338,6 +523,12 @@ def main():
     authentication_manager.show_statistics()
 
     print()
+    forward_secrecy_status = authentication_manager.evaluate_forward_secrecy(
+        vehicles[0],
+        vehicles[1],
+    )
+
+    print()
 
     print("=" * 70)
     print("PHASE 7 COMPLETED")
@@ -578,7 +769,8 @@ def main():
 
     mitm_manager = MITMAttack(
 
-        secure_transfer
+        secure_transfer,
+        authentication_manager
 
     )
 
@@ -897,195 +1089,89 @@ def main():
     print("=" * 70)
     print("PHASE 17 COMPLETED")
     print("=" * 70)
-        # ======================================================
-    # PHASE 18 : CHALLENGE–RESPONSE ENHANCEMENT
+
     # ======================================================
-
-    import secrets
-
-    print("\n")
-    print("=" * 70)
-    print("PHASE 18 : CHALLENGE–RESPONSE ENHANCEMENT")
-    print("=" * 70)
-
-    vehicle = vehicles[1]
-    rsu = rsus[0]
-
-    print(f"\nVehicle : {vehicle.real_id}")
-    print(f"RSU     : {rsu.rsu_id}")
-
-    # ------------------------------------------------------
-    # STEP 1 : Authentication Request
-    # ------------------------------------------------------
-
-    print("\nSTEP 1 : AUTHENTICATION REQUEST")
-    print("-" * 70)
-
-    print("✓ Vehicle → RSU : Authentication Request")
-
-    # ------------------------------------------------------
-    # STEP 2 : RSU Challenge
-    # ------------------------------------------------------
-
-    print("\nSTEP 2 : RANDOM CHALLENGE")
-    print("-" * 70)
-
-    challenge = secrets.token_hex(16)
-
-    print("✓ RSU Generated Random Challenge")
-    print(f"Challenge : {challenge}")
-
-    # ------------------------------------------------------
-    # STEP 3 : Vehicle Response
-    # ------------------------------------------------------
-
-    print("\nSTEP 3 : CHALLENGE RESPONSE")
-    print("-" * 70)
-
-    print("✓ Vehicle Signs Challenge using ML-DSA")
-
-    # ------------------------------------------------------
-    # STEP 4 : Session Key Establishment
-    # ------------------------------------------------------
-
-    print("\nSTEP 4 : SESSION KEY ESTABLISHMENT")
-    print("-" * 70)
-
-    print("✓ Vehicle Encapsulates Session Key using ML-KEM")
-
-    # ------------------------------------------------------
-    # STEP 5 : RSU Verification
-    # ------------------------------------------------------
-
-    print("\nSTEP 5 : RSU VERIFICATION")
-    print("-" * 70)
-
-    print("✓ ML-DSA Signature Verified")
-    print("✓ ML-KEM Ciphertext Decapsulated")
-
-    # ------------------------------------------------------
-    # STEP 6 : Authentication Success
-    # ------------------------------------------------------
-
-    print("\nSTEP 6 : SECURE SESSION")
-    print("-" * 70)
-
-    print("✓ Mutual Authentication Successful")
-    print("✓ Secure Session Established")
-
-    print()
-
-    print("=" * 70)
-    print("PHASE 18 COMPLETED")
-    print("=" * 70)
-        # ======================================================
-    # PHASE 19 : PROTOCOL-LEVEL COMMUNICATION OPTIMIZATION
+    # Communication Overhead Analysis
     # ======================================================
 
     print("\n")
     print("=" * 70)
-    print("PHASE 19 : PROTOCOL-LEVEL COMMUNICATION OPTIMIZATION")
+    print("COMMUNICATION OVERHEAD ANALYSIS")
     print("=" * 70)
 
-    print("\nConventional Authentication")
+    overhead_sizes = measure_protocol_overhead(
+        ta,
+        vehicles,
+    )
 
-    print("-" * 70)
-
-    print("1. Vehicle  → RSU : Authentication Request")
-    print("2. RSU      → Vehicle : Challenge")
-    print("3. Vehicle  → RSU : Signed Challenge")
-    print("4. RSU      → Vehicle : Verification")
-    print("5. Vehicle  → RSU : Session Confirmation")
-
-    print("\nTotal Message Exchanges : 5")
-
-    print("\nOptimized Authentication")
-
-    print("-" * 70)
-
-    print("1. Vehicle  → RSU : Authentication Request + Adaptive PID")
-    print("2. RSU      → Vehicle : Challenge + ML-KEM Parameters")
-    print("3. Vehicle  → RSU : Signed Challenge + ML-KEM Ciphertext")
-
-    print("\nTotal Message Exchanges : 3")
-
-    print()
-
-    print("Communication Reduction : 40%")
-    print("Authentication Security : PRESERVED")
-    print("Privacy Protection      : PRESERVED")
-    print("Post-Quantum Security   : PRESERVED")
-
-    print()
-
-    print("=" * 70)
-    print("PHASE 19 COMPLETED")
-    print("=" * 70)
-        # ======================================================
-    # PHASE 20 : SECURITY FEATURE ANALYSIS
+    # ======================================================
+    # PHASE 19 : SECURITY FEATURE ANALYSIS
     # ======================================================
 
     print("\n")
     print("=" * 75)
-    print("PHASE 20 : SECURITY FEATURE ANALYSIS")
+    print("PHASE 19 : SECURITY FEATURE ANALYSIS")
     print("=" * 75)
 
     print()
 
-    print("{:<30} {:<12} {:<12}".format(
+    print("{:<30} {:<15}".format(
         "Security Property",
-        "Existing",
-        "Proposed"
+        "Status"
     ))
 
     print("-" * 75)
 
-    features = [
-        ("Replay Attack Resistance", True, True),
-        ("MITM Attack Resistance", True, True),
-        ("Forward Secrecy", False, True),
-        ("Conditional Privacy", True, True),
-        ("Quantum Resistance", False, True)
+    security_features = [
+        ("Replay Attack Resistance", "IMPLEMENTED"),
+        ("MITM Attack Resistance", "IMPLEMENTED"),
+        ("Conditional Privacy", "IMPLEMENTED"),
+        ("Quantum Resistance", "IMPLEMENTED"),
+        ("Forward Secrecy", "IMPLEMENTED" if forward_secrecy_status else "FAILED"),
     ]
 
-    for feature, existing, proposed in features:
-        ex = "✓" if existing else "✗"
-        pr = "✓" if proposed else "✗"
-        print("{:<30} {:<12} {:<12}".format(feature, ex, pr))
+    for feature, status in security_features:
+        print("{:<30} {:<15}".format(feature, status))
 
     print("\n")
     print("-" * 75)
-    print("FEATURE ANALYSIS")
+    print("SECURITY FEATURE DETAILS")
     print("-" * 75)
 
     print("✓ Replay Attack Resistance")
-    print("   Challenge–Response protocol prevents replayed packets.\n")
+    print("   Fresh nonces, timestamps and replay checks are used.")
 
-    print("✓ MITM Attack Resistance")
-    print("   ML-DSA authenticates every communicating entity.\n")
+    print("\n✓ MITM Attack Resistance")
+    print("   ML-DSA signatures authenticate protocol messages, and")
+    print("   M3 binds the current M2 challenge nonce.")
 
-    print("✓ Forward Secrecy")
-    print("   Every session establishes a fresh ML-KEM session key.\n")
+    print("\n✓ Conditional Privacy")
+    print("   Vehicle pseudonyms are used instead of transmitting the")
+    print("   vehicle's real identity in M1/M3.")
 
-    print("✓ Conditional Privacy")
-    print("   Adaptive PID hides the real identity of vehicles.\n")
+    print("\n✓ Quantum Resistance")
+    print("   ML-KEM is used for key establishment and ML-DSA is used")
+    print("   for digital signatures.")
 
-    print("✓ Quantum Resistance")
-    print("   Encryption           : ML-KEM (Kyber)")
-    print("   Security Assumption  : Module-LWE")
-    print("   Signature            : ML-DSA (Dilithium)")
-    print("   Security Assumption  : Module-SIS")
-    print("   Resistant against quantum computer attacks.")
+    print("\n✓ Forward Secrecy")
+    if forward_secrecy_status:
+        print("   Each authentication session uses a fresh ephemeral")
+        print("   ML-KEM key pair. The ephemeral private key is discarded")
+        print("   after M3 decapsulation, so later compromise of the")
+        print("   responder's long-term ML-KEM key does not recover the")
+        print("   previously established session key.")
+    else:
+        print("   Forward-secrecy evaluation failed for the tested session.")
 
     print()
     print("=" * 75)
-    print("OVERALL SECURITY LEVEL : EXCELLENT")
+    print("SECURITY ANALYSIS COMPLETED")
     print("=" * 75)
+
     metrics_logger.export_all_csv()
 
     print("\nPerformance CSV files generated successfully.")
- 
+
 if __name__ == "__main__":
 
     main()
-    
